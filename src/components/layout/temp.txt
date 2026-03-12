@@ -1,0 +1,5 @@
+            {/* Admin Link - sadece admin görebilir */}
+            {user?.role === 'admin' && (
+              <Link to="/admin" className="hover:text-primary-400 transition" title="Admin Panel">
+                <LayoutDashboard className="w-6 h-6" />
+              </Link>

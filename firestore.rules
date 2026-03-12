@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Yardımcı fonksiyonlar
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Siparişler: Kullanıcı kendi siparişini görebilir, admin her şeyi görebilir
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if true; // Sipariş oluşturma (misafir dahil)
+      allow update, delete: if isAdmin();
+    }
+
+    // Kullanıcılar: Sadece kendisi veya admin
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Site İçeriği: Herkes okuyabilir, sadece admin değiştirebilir
+    match /site_content/{contentId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Ürünler: Herkes görebilir, sadece admin yönetebilir
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Kuponlar: Sadece sistem okuyabilir veya admin yönetebilir
+    match /coupons/{couponId} {
+      allow read: if true; // Kullanıcı kontrol edebilir
+      allow write: if isAdmin();
+    }
+  }
+}
