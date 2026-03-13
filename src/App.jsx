@@ -73,7 +73,7 @@ function App() {
                     <Route path="/email-dogrulama-bilgi" element={<EmailVerificationInfoPage />} />
                     <Route path="/email-dogrula/:token" element={<EmailVerifiedPage />} />
                     <Route path="/sifremi-unuttum" element={<ForgotPasswordPage />} />
-                    <Route path="/sifre-sifirlama/:token" element={<ResetPasswordPage />} />
+                    <Route path="/sifre-sifirla/:token" element={<ResetPasswordPage />} />
                     <Route path="/profil" element={<ProfilePage />} />
                     <Route path="/favoriler" element={<FavoritesPage />} />
                     <Route path="/checkout" element={<CheckoutPage />} />

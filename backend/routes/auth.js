@@ -77,7 +77,7 @@ router.post('/cikis', authController.logout);
 router.get('/email-dogrula/:token', authController.verifyEmail);
 
 // Resend email verification
-router.post('/email-dogrula-yeniden-gonder', validateResendVerification, authController.resendEmailVerification);
+router.post('/email-dogrula-yeniden-gonder', authController.resendEmailVerification);
 
 // Forgot password
 router.post('/sifremi-unuttum', validateForgotPassword, authController.forgotPassword);

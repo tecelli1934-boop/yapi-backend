@@ -124,8 +124,7 @@ const CheckoutPage = () => {
       let paymentResult = { success: true, transactionId: null };
       
       if (formData.paymentMethod === 'credit_card') {
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://yapi-backend.onrender.com';
-        const response = await axios.post(`${apiUrl}/api/payment/process`, {
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/payment/process`, {
           orderData: {
             amount: total,
             orderId: `ORD_${Date.now()}`,
@@ -195,19 +194,43 @@ const CheckoutPage = () => {
 
       // Backend API'sine gönder
       const apiUrl = import.meta.env.VITE_API_URL || 'https://yapi-backend.onrender.com';
+      
+      console.log("Sipariş verisi gönderiliyor:", orderData);
+      console.log("İstek atılan URL:", `${apiUrl}/api/orders`);
+      
       const response = await axios.post(`${apiUrl}/api/orders`, orderData, {
         withCredentials: true,
-        timeout: 60000 // 60 saniye bekle (Render'ın uyanması için)
+        timeout: 60000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).catch(error => {
+        console.error("Sipariş API hatası:", error);
+        
+        // Network error için özel handling
+        if (error.code === 'NETWORK_ERROR' || error.code === 'ECONNREFUSED') {
+          throw new Error('Backend sunucusuna ulaşılamıyor. Lütfen internet bağlantınızı kontrol edin.');
+        }
+        
+        // Timeout için özel handling
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('İstek zaman aşımına uğradı. Lütfen tekrar deneyin.');
+        }
+        
+        // CORS error için özel handling
+        if (error.response?.status === 403) {
+          throw new Error('CORS hatası. Backend ayarlarını kontrol edin.');
+        }
+        
+        // Diğer hatalar
+        throw new Error(error.response?.data?.message || error.message || 'Sipariş oluşturulamadı.');
       });
       
-      if (response.data.status === 'success') {
-        const backendOrderId = response.data.data.order.id || response.data.data.order._id;
-        setOrderId(backendOrderId.toString());
-        setIsSuccess(true);
-        clearCart();
-      } else {
-        throw new Error(response.data.message || 'Sipariş oluşturulamadı.');
-      }
+      // Başarılı ise siparişi tamamla
+      const backendOrderId = response.data.data.order.id || response.data.data.order._id;
+      setOrderId(backendOrderId.toString());
+      setIsSuccess(true);
+      clearCart();
     } catch (error) {
       console.error("Sipariş hatası:", error);
       alert(error.response?.data?.message || error.message || "Bir hata oluştu.");

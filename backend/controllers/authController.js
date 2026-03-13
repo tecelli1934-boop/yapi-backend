@@ -325,135 +325,6 @@ exports.restrictTo = (...roles) => {
   };
 };
 
-// Email Verification
-exports.verifyEmail = catchAsync(async (req, res, next) => {
-  const { token } = req.params;
-
-  // Hash token and find user
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-  const user = await User.findOne({
-    emailVerificationToken: hashedToken,
-    emailVerificationExpires: { $gt: Date.now() }
-  });
-
-  if (!user) {
-    return next(new AppError('Geçersiz veya süresi dolmuş doğrulama linki', 400));
-  }
-
-  // Verify email
-  user.emailVerified = true;
-  user.emailVerificationToken = undefined;
-  user.emailVerificationExpires = undefined;
-  await user.save({ validateBeforeSave: false });
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Email adresiniz başarıyla doğrulandı! Giriş yapabilirsiniz.',
-    data: {
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        emailVerified: true
-      }
-    }
-  });
-});
-
-// Resend Email Verification
-exports.resendEmailVerification = catchAsync(async (req, res, next) => {
-  const { email } = req.body;
-
-  const user = await User.findOne({ email });
-  if (!user) {
-    return next(new AppError('Bu email adresi bulunamadı', 404));
-  }
-
-  if (user.emailVerified) {
-    return next(new AppError('Bu email adresi zaten doğrulanmış', 400));
-  }
-
-  // Generate new verification token
-  const verificationToken = generateVerificationToken();
-  user.emailVerificationToken = crypto.createHash('sha256').update(verificationToken).digest('hex');
-  user.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-  await user.save({ validateBeforeSave: false });
-
-  // Send verification email
-  try {
-    await sendEmailVerification(user, verificationToken);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Doğrulama emaili yeniden gönderildi!'
-    });
-  } catch (err) {
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-    
-    return next(new AppError('Email gönderilemedi. Lütfen daha sonra tekrar deneyin.', 500));
-  }
-});
-
-// Forgot Password
-exports.forgotPassword = catchAsync(async (req, res, next) => {
-  const { email } = req.body;
-
-  const user = await User.findOne({ email });
-  if (!user) {
-    return next(new AppError('Bu email adresi bulunamadı', 404));
-  }
-
-  // Generate reset token
-  const resetToken = generatePasswordResetToken();
-  user.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-  user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
-  await user.save({ validateBeforeSave: false });
-
-  // Send reset email
-  try {
-    await sendPasswordResetEmail(user, resetToken);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Şifre sıfırlama linki email adresinize gönderildi!'
-    });
-  } catch (err) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-    
-    return next(new AppError('Email gönderilemedi. Lütfen daha sonra tekrar deneyin.', 500));
-  }
-});
-
-// Reset Password
-exports.resetPassword = catchAsync(async (req, res, next) => {
-  const { token } = req.params;
-  const { password } = req.body;
-
-  // Hash token and find user
-  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() }
-  });
-
-  if (!user) {
-    return next(new AppError('Geçersiz veya süresi dolmuş şifre sıfırlama linki', 400));
-  }
-
-  // Set new password
-  user.password = password;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
-
-  // Log user in
-  createSendToken(user, 200, res, 'Şifreniz başarıyla güncellendi!');
-});
-
 // Update FCM Token
 exports.updateFCMToken = catchAsync(async (req, res, next) => {
   const { fcmToken } = req.body;
@@ -471,4 +342,38 @@ exports.updateFCMToken = catchAsync(async (req, res, next) => {
     status: 'success',
     message: 'FCM Token başarıyla güncellendi'
   });
+});
+
+// Resend Email Verification
+exports.resendEmailVerification = catchAsync(async (req, res, next) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    return next(new AppError('Bu email adresi bulunamadı', 404));
+  }
+
+  if (user.emailVerified) {
+    return next(new AppError('Bu email adresi zaten doğrulanmış', 400));
+  }
+
+  // Generate new verification token
+  const verificationToken = user.createEmailVerificationToken();
+  await user.save({ validateBeforeSave: false });
+
+  // Send verification email
+  try {
+    await sendEmailVerification(user, verificationToken);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Doğrulama emaili yeniden gönderildi!'
+    });
+  } catch (err) {
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+    
+    return next(new AppError('Email gönderilemedi. Lütfen daha sonra tekrar deneyin.', 500));
+  }
 });

@@ -2,9 +2,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
-const Email = require('../utils/email');
-const fcmService = require('../services/fcmService');
-const User = require('../models/User'); // Required to get FCM tokens
+const User = require('../models/User');
 
 // @desc    Create new order
 // @route   POST /api/orders
@@ -97,6 +95,25 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     const user = await User.findOne({ email: order.customerEmail });
     if (user && user.fcmTokens && user.fcmTokens.length > 0) {
       await fcmService.sendOrderConfirmationPush(user.fcmTokens, order.id);
+    }
+    
+    // 3. Admin Notification (Banka havalesi için)
+    if (paymentMethod === 'bank_transfer') {
+      const adminUsers = await User.find({ role: 'admin' });
+      for (const admin of adminUsers) {
+        if (admin.fcmTokens && admin.fcmTokens.length > 0) {
+          await fcmService.sendNewOrderNotification(admin.fcmTokens, {
+            title: 'Yeni Sipariş!',
+            body: `${order.customerName} banka havalesi ile yeni sipariş verdi: #${order.id}`,
+            data: {
+              orderId: order.id.toString(),
+              customerName: order.customerName,
+              paymentMethod: 'bank_transfer',
+              amount: total
+            }
+          });
+        }
+      }
     }
   } catch (err) {
     console.error('Bildirim gönderim hatası (Sipariş Onayı):', err);

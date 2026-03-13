@@ -12,7 +12,8 @@ const EmailVerifiedPage = () => {
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        const response = await fetch(`http://localhost:5001/api/auth/email-dogrula/${token}`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://yapi-backend.onrender.com';
+        const response = await fetch(`${apiUrl}/api/auth/email-dogrula/${token}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
