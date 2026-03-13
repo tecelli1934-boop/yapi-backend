@@ -453,3 +453,22 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
   // Log user in
   createSendToken(user, 200, res, 'Şifreniz başarıyla güncellendi!');
 });
+
+// Update FCM Token
+exports.updateFCMToken = catchAsync(async (req, res, next) => {
+  const { fcmToken } = req.body;
+
+  if (!fcmToken) {
+    return next(new AppError('FCM Token alanı zorunludur', 400));
+  }
+
+  // Add the token if it doesn't exist
+  await User.findByIdAndUpdate(req.user.id, {
+    $addToSet: { fcmTokens: fcmToken }
+  });
+
+  res.status(200).json({
+    status: 'success',
+    message: 'FCM Token başarıyla güncellendi'
+  });
+});
