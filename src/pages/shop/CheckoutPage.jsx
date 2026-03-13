@@ -124,7 +124,8 @@ const CheckoutPage = () => {
       let paymentResult = { success: true, transactionId: null };
       
       if (formData.paymentMethod === 'credit_card') {
-        const response = await axios.post('http://localhost:5000/api/payment/process', {
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://yapi-backend.onrender.com';
+        const response = await axios.post(`${apiUrl}/api/payment/process`, {
           orderData: {
             amount: total,
             orderId: `ORD_${Date.now()}`,
@@ -132,6 +133,9 @@ const CheckoutPage = () => {
             failUrl: window.location.origin + '/payment-failure'
           },
           cardData: e.cardData // Bileşenden gelen kart verisi
+        }, {
+          withCredentials: true,
+          timeout: 60000
         });
         
         if (!response.data.success) {
